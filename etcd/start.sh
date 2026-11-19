@@ -24,7 +24,7 @@ export ETCDCTL_ENDPOINTS=http://127.0.0.1:2379
 # First boot: start etcd on loopback only, create the root user and turn auth
 # on, then stop it, so no other service can reach etcd before auth is enabled.
 # The marker file is written only after auth is on; every step is idempotent.
-marker="$ETCD_DATA_DIR/.railway-auth-enabled"
+marker="${ETCD_DATA_DIR%/}.auth-enabled"   # beside the data dir; etcd warns about files inside it
 if [ ! -f "$marker" ]; then
   echo "[railway] first boot: creating the etcd root user and enabling auth"
   ETCD_LISTEN_CLIENT_URLS=http://127.0.0.1:2379 etcd &
