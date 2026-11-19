@@ -1,0 +1,35 @@
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static 100.64.0.0/10 fd00::/8
+	}
+}
+
+:{$PORT:8080} {
+	encode zstd gzip
+
+	# This service's own health check; it does not depend on APISIX being up.
+	handle /healthz {
+		respond "ok" 200
+	}
+
+	# The Admin API has nothing at /, so send visitors to the dashboard.
+	handle / {
+		redir * /ui/ 302
+	}
+
+	# Everything else (/ui/*, /apisix/admin/*) goes to the Admin API, which
+	# checks the admin key on every API call.
+	handle {
+		reverse_proxy {$APISIX_ADMIN_URL:http://apisix.railway.internal:9180} {
+			header_up X-Real-IP {client_ip}
+		}
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}

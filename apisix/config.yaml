@@ -1,0 +1,82 @@
+# Apache APISIX configuration for Railway.
+#
+# Values that differ per deployment come from environment variables through
+# APISIX's own ${{VAR}} interpolation. A variable without a ":=" default is
+# required: APISIX refuses to start without it.
+
+apisix:
+  node_listen:
+    - 9080                      # gateway traffic; the public domain targets this port
+  enable_admin: true
+  enable_ipv6: true
+  enable_control: false
+
+  # /status and /status/ready (503 until every worker has its config from etcd).
+  # Railway's health check reaches it over IPv4, so it binds 0.0.0.0, not loopback.
+  status:
+    ip: 0.0.0.0
+    port: 7085
+
+  # Railway's edge connects from these private ranges and sets X-Forwarded-*.
+  trusted_addresses:
+    - 100.64.0.0/10
+    - fd00::/8
+
+  # TLS ends at Railway's edge, so APISIX's own 9443 listener stays off.
+  ssl:
+    enable: false
+
+  # Encrypts SSL keys and secret plugin fields in etcd. 16 or 32 characters.
+  # Never change it after data is written: add a new key above it instead.
+  data_encryption:
+    enable_encrypt_fields: true
+    keyring:
+      - "${{APISIX_KEYRING}}"
+
+nginx_config:
+  # "auto" would read the host's CPU count, not the container's share.
+  worker_processes: ${{APISIX_WORKER_PROCESSES:=2}}
+  http:
+    real_ip_header: X-Real-IP
+    real_ip_recursive: "off"
+    real_ip_from:
+      - 127.0.0.1
+      - "unix:"
+      - 100.64.0.0/10
+      - fd00::/8
+  # admin_listen renders one IPv4 listen line; Railway's private network also
+  # uses IPv6, so the Admin API listens on both.
+  http_admin_configuration_snippet: |
+    listen [::]:9180 ipv6only=on;
+
+deployment:
+  role: traditional
+  role_traditional:
+    config_provider: etcd
+
+  admin:
+    admin_key_required: true
+    admin_key:
+      - name: admin
+        key: "${{APISIX_ADMIN_KEY}}"
+        role: admin
+    enable_admin_cors: false
+    enable_admin_ui: true
+    # The Admin API has no public domain: it is reached only over the private
+    # network (through the dashboard service), and every call needs the admin key.
+    allow_admin:
+      - 0.0.0.0/0
+      - "::/0"
+    admin_listen:
+      ip: 0.0.0.0
+      port: 9180
+    admin_api_version: v3
+
+  etcd:
+    host:
+      - "http://${{APISIX_ETCD_HOST}}:${{APISIX_ETCD_PORT:=2379}}"
+    prefix: /apisix
+    timeout: 30
+    startup_retry: 10
+    user: root
+    password: "${{APISIX_ETCD_PASSWORD}}"
