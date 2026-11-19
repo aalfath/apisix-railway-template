@@ -19,22 +19,35 @@ export ETCD_QUOTA_BACKEND_BYTES="${ETCD_QUOTA_BACKEND_BYTES:-2147483648}"
 mkdir -p "$ETCD_DATA_DIR"
 chmod 700 "$ETCD_DATA_DIR"
 
+export ETCDCTL_ENDPOINTS=http://127.0.0.1:2379
+
+# First boot: start etcd on loopback only, create the root user and turn auth
+# on, then stop it, so no other service can reach etcd before auth is enabled.
+# The marker file is written only after auth is on; every step is idempotent.
+marker="$ETCD_DATA_DIR/.railway-auth-enabled"
+if [ ! -f "$marker" ]; then
+  echo "[railway] first boot: creating the etcd root user and enabling auth"
+  ETCD_LISTEN_CLIENT_URLS=http://127.0.0.1:2379 etcd &
+  boot=$!
+  until etcdctl endpoint health >/dev/null 2>&1 || etcdctl --user "root:$ETCD_ROOT_PASSWORD" endpoint health >/dev/null 2>&1; do
+    kill -0 "$boot" 2>/dev/null || exit 1
+    sleep 1
+  done
+  if ! etcdctl --user "root:$ETCD_ROOT_PASSWORD" auth status 2>/dev/null | grep -q "Authentication Status: true"; then
+    etcdctl user get root >/dev/null 2>&1 || etcdctl user add root --new-user-password="$ETCD_ROOT_PASSWORD" >/dev/null
+    etcdctl user grant-role root root >/dev/null 2>&1 || true
+    etcdctl auth enable >/dev/null
+  fi
+  etcdctl --user "root:$ETCD_ROOT_PASSWORD" auth status | grep -q "Authentication Status: true"
+  touch "$marker"
+  kill -TERM "$boot"
+  wait "$boot" || true
+  echo "[railway] auth enabled"
+fi
+
 etcd &
 pid=$!
 trap 'kill -TERM "$pid"' TERM INT
-
-export ETCDCTL_ENDPOINTS=http://127.0.0.1:2379
-until etcdctl endpoint health >/dev/null 2>&1 || etcdctl --user "root:$ETCD_ROOT_PASSWORD" endpoint health >/dev/null 2>&1; do
-  kill -0 "$pid" 2>/dev/null || exit 1
-  sleep 1
-done
-
-if ! etcdctl --user "root:$ETCD_ROOT_PASSWORD" auth status 2>/dev/null | grep -q "Authentication Status: true"; then
-  echo "[railway] first boot: creating the etcd root user and enabling auth"
-  etcdctl user get root >/dev/null 2>&1 || etcdctl user add root --new-user-password="$ETCD_ROOT_PASSWORD" >/dev/null
-  etcdctl user grant-role root root >/dev/null 2>&1 || true
-  etcdctl auth enable
-fi
 
 # Keep waiting after a TERM so etcd finishes its shutdown before the container exits.
 status=0
