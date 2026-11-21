@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.21.0-1 (2026-11-21)
+
+No breaking changes.
+
+- apisix: the start script's wait for etcd now uses a 3-second timeout per connection attempt. When you apply an update, Railway redeploys etcd and apisix together, and one attempt could hang for about 4.5 minutes before. That came close to the 5-minute health-check limit.
+
 ## 3.21.0 (2026-11-21)
 
 **Breaking changes upstream (none need action on this template):**

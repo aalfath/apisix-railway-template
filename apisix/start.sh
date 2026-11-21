@@ -15,8 +15,11 @@ esac
 
 port="${APISIX_ETCD_PORT:-2379}"
 echo "[railway] waiting for etcd at ${APISIX_ETCD_HOST}:${port}"
+# Each attempt gets a 3 s connect timeout: when etcd is redeployed at the same
+# time, its old private address can swallow the SYN and a bare /dev/tcp connect
+# then hangs for minutes, close to Railway's health-check limit.
 for i in $(seq 1 90); do
-  if (exec 3<>"/dev/tcp/${APISIX_ETCD_HOST}/${port}") 2>/dev/null; then
+  if timeout 3 bash -c 'exec 3<>"/dev/tcp/$0/$1"' "${APISIX_ETCD_HOST}" "${port}" 2>/dev/null; then
     echo "[railway] etcd reachable after ${i} attempt(s)"
     break
   fi
