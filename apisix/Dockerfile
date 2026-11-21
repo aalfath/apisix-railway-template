@@ -1,5 +1,5 @@
 # Apache APISIX gateway for Railway (traditional mode, configuration in etcd).
-FROM apache/apisix:3.20.0-debian@sha256:013de62a9dfba7d8e6006b3e85b524c28c9f1c3549fca3b91d5b258b0b9e759a
+FROM apache/apisix:3.21.0-debian@sha256:1741a8e1186e5c39ea10e6b4fb3e682534d1705efb8328195de5b41ad0657380
 
 USER root
 COPY --chown=apisix:apisix config.yaml /usr/local/apisix/conf/config.yaml

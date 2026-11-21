@@ -2,13 +2,13 @@
 
 # Apache APISIX on Railway
 
-A one-click Railway template for [Apache APISIX](https://apisix.apache.org/) **3.20.0**, the cloud-native API and AI gateway, with its configuration store (etcd) and its built-in dashboard.
+A one-click Railway template for [Apache APISIX](https://apisix.apache.org/) **3.21.0**, the cloud-native API and AI gateway, with its configuration store (etcd) and its built-in dashboard.
 
 ## What it deploys
 
 | Service | Folder | What it does | Public |
 |---|---|---|---|
-| `apisix` | [`apisix/`](apisix) | The gateway (`apache/apisix:3.20.0-debian`, pinned by digest). Takes your API traffic on port 9080; Admin API on private port 9180; health check `/status/ready` on port 7085. | yes (gateway traffic) |
+| `apisix` | [`apisix/`](apisix) | The gateway (`apache/apisix:3.21.0-debian`, pinned by digest). Takes your API traffic on port 9080; Admin API on private port 9180; health check `/status/ready` on port 7085. | yes (gateway traffic) |
 | `etcd` | [`etcd/`](etcd) | etcd v3.6.17, single node, with authentication on. Stores every route, upstream, consumer, plugin and SSL object. Data on a volume at `/var/lib/etcd`. | no |
 | `dashboard` | [`dashboard/`](dashboard) | Caddy 2.11.9 reverse proxy that publishes the APISIX dashboard (`/ui/`) and Admin API (`/apisix/admin/`) on their own HTTPS domain. | yes (admin) |
 
